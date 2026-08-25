@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>College Quiz Portal</title>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef1f7;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 750px;
+            margin: 50px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 18px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        }
+
+        h1 {
+            color: #202b8f;
+            font-size: 42px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        input {
+            width: 70%;
+            padding: 14px;
+            margin: 10px;
+            border: 1px solid #bbb;
+            border-radius: 8px;
+            font-size: 17px;
+        }
+
+        button {
+            padding: 13px 28px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #202b8f;
+            color: white;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        .logout {
+            background: #555;
+        }
+
+        .option {
+            display: block;
+            width: 90%;
+            margin: 12px auto;
+            padding: 15px;
+            background: #f1f1f1;
+            color: #222;
+            border: 2px solid #ddd;
+            text-align: left;
+        }
+
+        .option:hover {
+            background: #ddd;
+        }
+
+        .selected {
+            border: 3px solid #202b8f;
+            background: #dce1ff;
+        }
+
+        #quizSection,
+        #setupPage,
+        #questionPage,
+        #resultPage {
+            display: none;
+        }
+
+        #questionText {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 30px 10px;
+        }
+
+        #scoreText {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        #message,
+        #quizMessage {
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Mahendra Institute of Technology</h1>
+
+    <h2>🎓 College Quiz Portal</h2>
+
+
+    <!-- LOGIN PAGE -->
+
+    <div id="loginPage">
+
+        <p>
+            Welcome! Sign in with your Google account to continue.
+        </p>
+
+        <div id="googleButton"></div>
+
+        <p id="message"></p>
+
+    </div>
+
+
+    <!-- ACCESS PAGE -->
+
+    <div id="quizSection">
+
+        <h2>✅ Access Granted!</h2>
+
+        <p id="welcomeMessage"></p>
+
+        <button onclick="startQuiz()">
+            Start Quiz
+        </button>
+
+        <br>
+
+        <button class="logout" onclick="logout()">
+            Logout
+        </button>
+
+    </div>
+
+
+    <!-- QUIZ SETUP -->
+
+    <div id="setupPage">
+
+        <h2>📝 Quiz Setup</h2>
+
+        <p>Enter your quiz topic.</p>
+
+        <input
+            type="text"
+            id="topic"
+            placeholder="Example: UHV">
+
+        <br>
+
+        <input
+            type="number"
+            id="questionCount"
+            placeholder="Number of questions"
+            min="1"
+            max="10">
+
+        <br>
+
+        <button onclick="beginQuiz()">
+            Start Quiz
+        </button>
+
+        <p id="quizMessage"></p>
+
+    </div>
+
+
+    <!-- QUESTION PAGE -->
+
+    <div id="questionPage">
+
+        <h2 id="questionNumber"></h2>
+
+        <div id="questionText"></div>
+
+        <div id="options"></div>
+
+        <button onclick="nextQuestion()">
+            Next →
+        </button>
+
+    </div>
+
+
+    <!-- RESULT PAGE -->
+
+    <div id="resultPage">
+
+        <h2>🎉 Quiz Completed!</h2>
+
+        <p id="scoreText"></p>
+
+        <button onclick="restartQuiz()">
+            Take Quiz Again
+        </button>
+
+        <br>
+
+        <button class="logout" onclick="logout()">
+            Logout
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    // =====================================
+    // GOOGLE LOGIN
+    // =====================================
+
+    const GOOGLE_CLIENT_ID =
+        "596680702504-d2rfv27j74aff8tspgg2n1k83o1g6a81.apps.googleusercontent.com";
+
+
+    window.onload = function () {
+
+        google.accounts.id.initialize({
+
+            client_id: GOOGLE_CLIENT_ID,
+
+            callback: handleGoogleLogin
+
+        });
+
+
+        google.accounts.id.renderButton(
+
+            document.getElementById("googleButton"),
+
+            {
+                theme: "outline",
+                size: "large",
+                text: "signin_with",
+                shape: "rectangular"
+            }
+
+        );
+
+    };
+
+
+    async function handleGoogleLogin(response) {
+
+        const message =
+            document.getElementById("message");
+
+        message.textContent =
+            "Checking Google account...";
+
+
+        try {
+
+            const serverResponse =
+                await fetch("/google-login", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        credential: response.credential
+                    })
+
+                });
+
+
+            const result =
+                await serverResponse.json();
+
+
+            if (result.allowed) {
+
+                document.getElementById(
+                    "loginPage"
+                ).style.display = "none";
+
+
+                document.getElementById(
+                    "quizSection"
+                ).style.display = "block";
+
+
+                document.getElementById(
+                    "welcomeMessage"
+                ).textContent =
+                    "Welcome, " + result.email + "!";
+
+            } else {
+
+                message.textContent =
+                    "❌ " + result.message;
+
+            }
+
+        } catch (error) {
+
+            console.error(error);
+
+            message.textContent =
+                "❌ Server connection failed.";
+
+        }
+
+    }
+
+
+    // =====================================
+    // QUIZ VARIABLES
+    // =====================================
+
+    let quizQuestions = [];
+
+    let currentQuestion = 0;
+
+    let score = 0;
+
+    let selectedAnswer = -1;
+
+
+    // =====================================
+    // UHV QUESTION BANK
+    // =====================================
+
+    const questionBank = [
+
+        {
+            question: "What does UHV stand for?",
+
+            options: [
+                "Universal Human Values",
+                "United Human Vision",
+                "Universal Health Values",
+                "United Human Values"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "What is the basic aspiration of every human being?",
+
+            options: [
+                "Continuous happiness and prosperity",
+                "Only money",
+                "Only fame",
+                "Only physical comfort"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "What is harmony?",
+
+            options: [
+                "A state of balance and mutual understanding",
+                "Competition between people",
+                "Conflict between people",
+                "Isolation"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "What is important for harmony in a family?",
+
+            options: [
+                "Trust and respect",
+                "Competition",
+                "Anger",
+                "Jealousy"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "What is self-exploration?",
+
+            options: [
+                "Understanding oneself",
+                "Copying others",
+                "Competing with others",
+                "Avoiding questions"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "What is prosperity?",
+
+            options: [
+                "Feeling of having more than required physical facilities",
+                "Having unlimited money",
+                "Having a large house",
+                "Buying expensive things"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "What is trust in a relationship?",
+
+            options: [
+                "Assurance of mutual happiness and prosperity",
+                "Fear of another person",
+                "Competition",
+                "Suspicion"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "What is the purpose of education according to UHV?",
+
+            options: [
+                "Right understanding and right living",
+                "Only getting marks",
+                "Only getting a job",
+                "Only earning money"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "What is the relationship between human beings and nature?",
+
+            options: [
+                "Mutual fulfillment",
+                "Competition",
+                "Conflict",
+                "No relationship"
+            ],
+
+            answer: 0
+        },
+
+
+        {
+            question: "Which is necessary for mutual happiness?",
+
+            options: [
+                "Right understanding",
+                "Conflict",
+                "Fear",
+                "Competition"
+            ],
+
+            answer: 0
+        }
+
+    ];
+
+
+    // =====================================
+    // START QUIZ SETUP
+    // =====================================
+
+    function startQuiz() {
+
+        document.getElementById(
+            "quizSection"
+        ).style.display = "none";
+
+
+        document.getElementById(
+            "setupPage"
+        ).style.display = "block";
+
+    }
+
+
+    // =====================================
+    // BEGIN QUIZ
+    // =====================================
+
+    function beginQuiz() {
+
+        const topic =
+            document.getElementById(
+                "topic"
+            ).value.trim();
+
+
+        const count =
+            parseInt(
+                document.getElementById(
+                    "questionCount"
+                ).value
+            );
+
+
+        const message =
+            document.getElementById(
+                "quizMessage"
+            );
+
+
+        if (!topic) {
+
+            message.textContent =
+                "❌ Please enter a topic.";
+
+            return;
+
+        }
+
+
+        if (!count || count < 1) {
+
+            message.textContent =
+                "❌ Please enter the number of questions.";
+
+            return;
+
+        }
+
+
+        if (count > questionBank.length) {
+
+            message.textContent =
+                "❌ Maximum 10 questions available.";
+
+            return;
+
+        }
+
+
+        // Shuffle question bank
+
+        const shuffled =
+            [...questionBank].sort(
+                () => Math.random() - 0.5
+            );
+
+
+        // Select questions
+
+        quizQuestions =
+            shuffled.slice(0, count);
+
+
+        currentQuestion = 0;
+
+        score = 0;
+
+        selectedAnswer = -1;
+
+
+        document.getElementById(
+            "setupPage"
+        ).style.display = "none";
+
+
+        document.getElementById(
+            "questionPage"
+        ).style.display = "block";
+
+
+        showQuestion();
+
+    }
+
+
+    // =====================================
+    // SHOW QUESTION
+    // =====================================
+
+    function showQuestion() {
+
+        const q =
+            quizQuestions[currentQuestion];
+
+
+        document.getElementById(
+            "questionNumber"
+        ).textContent =
+            "Question " +
+            (currentQuestion + 1) +
+            " / " +
+            quizQuestions.length;
+
+
+        document.getElementById(
+            "questionText"
+        ).textContent =
+            q.question;
+
+
+        const options =
+            document.getElementById(
+                "options"
+            );
+
+
+        options.innerHTML = "";
+
+
+        selectedAnswer = -1;
+
+
+        q.options.forEach(
+            function (option, index) {
+
+                const button =
+                    document.createElement(
+                        "button"
+                    );
+
+
+                button.textContent =
+                    option;
+
+
+                button.className =
+                    "option";
+
+
+                button.onclick =
+                    function () {
+
+                        selectedAnswer =
+                            index;
+
+
+                        document
+                            .querySelectorAll(
+                                ".option"
+                            )
+                            .forEach(
+                                function (btn) {
+
+                                    btn.classList
+                                        .remove(
+                                            "selected"
+                                        );
+
+                                }
+                            );
+
+
+                        button.classList.add(
+                            "selected"
+                        );
+
+                    };
+
+
+                options.appendChild(
+                    button
+                );
+
+            }
+        );
+
+    }
+
+
+    // =====================================
+    // NEXT QUESTION
+    // =====================================
+
+    function nextQuestion() {
+
+        if (selectedAnswer === -1) {
+
+            alert(
+                "Please select an answer first."
+            );
+
+            return;
+
+        }
+
+
+        if (
+            selectedAnswer ===
+            quizQuestions[currentQuestion].answer
+        ) {
+
+            score++;
+
+        }
+
+
+        currentQuestion++;
+
+
+        if (
+            currentQuestion <
+            quizQuestions.length
+        ) {
+
+            showQuestion();
+
+        } else {
+
+            showResult();
+
+        }
+
+    }
+
+
+    // =====================================
+    // RESULT
+    // =====================================
+
+    function showResult() {
+
+        document.getElementById(
+            "questionPage"
+        ).style.display = "none";
+
+
+        document.getElementById(
+            "resultPage"
+        ).style.display = "block";
+
+
+        document.getElementById(
+            "scoreText"
+        ).textContent =
+            "Your Score: " +
+            score +
+            " / " +
+            quizQuestions.length;
+
+    }
+
+
+    // =====================================
+    // RESTART
+    // =====================================
+
+    function restartQuiz() {
+
+        document.getElementById(
+            "resultPage"
+        ).style.display = "none";
+
+
+        document.getElementById(
+            "setupPage"
+        ).style.display = "block";
+
+
+        document.getElementById(
+            "topic"
+        ).value = "";
+
+        document.getElementById(
+            "questionCount"
+        ).value = "";
+
+    }
+
+
+    // =====================================
+    // LOGOUT
+    // =====================================
+
+    function logout() {
+
+        location.reload();
+
+    }
+
+</script>
+
+</body>
+</html>
